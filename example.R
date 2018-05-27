@@ -31,6 +31,9 @@ df <- data.frame(Athlete = athletes,
 
 vjRel.two <- bootReliability(df, "Pre1", "Pre2", samples = 200, plot = TRUE)
 
+# Supply apriori SWC (if you don't want the function to estimate it)
+vjRel.two <- bootReliability(df, "Pre1", "Pre2", samples = 200, plot = TRUE, SWC = 1)
+
 
 # Multiple devices
 verticalJumpTestPre1 <- verticalJumpReal + rnorm(n = N, mean = 0, sd = 0.5)  
@@ -81,4 +84,22 @@ verticalJumpTestPost <- verticalJumpTestPre + rnorm(n = N, mean = 5, sd = 6)
 df <- data.frame(Athlete = athletes,
                  Pre = verticalJumpTestPre,
                  Post = verticalJumpTestPost)
-vjChange <- bootChange(df, pre = "Pre", post = "Post", samples = 200, plot = TRUE, na.rm = TRUE)
+vjChange <- bootChange(df,
+                       pre = "Pre",
+                       post = "Post",
+                       samples = 200,
+                       plot = TRUE,
+                       na.rm = TRUE)
+
+vjChange$changeEstimate
+
+
+# Provide apriori SWC if you don't want function to estimate it
+vjChange <- bootChange(df,
+                       pre = "Pre",
+                       post = "Post",
+                       SWC = 5,
+                       samples = 200,
+                       plot = TRUE,
+                       na.rm = TRUE)
+vjChange$changeEstimate

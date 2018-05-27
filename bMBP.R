@@ -31,6 +31,7 @@ bootReliability <- function(df,
                             xlabel = var1,
                             ylabel = var2,
                             SWCcoef = 0.2,
+                            SWC = NA, # Use this if you want to use specific SWC (not est)
                             logTrans = FALSE, # Log transformation - next version
                             measurementError = 0, # Random error to add in boot samples
                             paired = TRUE, # Will be used in next version (now it is paired)
@@ -38,7 +39,8 @@ bootReliability <- function(df,
                             samples = 2000,
                             plot = TRUE,
                             iter = TRUE,
-                            na.rm = TRUE) {
+                            na.rm = TRUE,
+                            errorNoise = 10^-6) { # The random noise for boot not to complain
     # Plot    
     df$diff <- df[[var2]] - df[[var1]]
     df$avg <- (df[[var1]] + df[[var2]]) / 2
@@ -48,27 +50,31 @@ bootReliability <- function(df,
     
     # For SWC use pooled between Variable 1 and Variable 2
     N <- nrow(df)
-    SWC <- sqrt(((var(df[[var1]], na.rm = na.rm)*(N-1)) + (var(df[[var2]], na.rm = na.rm)*(N-1))) /(2*(N-1))) * SWCcoef
     
+    if(is.na(SWC)) { # If SWC not provided estimate it
+        SWC_plot <- sqrt(((var(df[[var1]], na.rm = na.rm)*(N-1)) + (var(df[[var2]], na.rm = na.rm)*(N-1))) /(2*(N-1))) * SWCcoef
+    } else {
+        SWC_plot <- SWC
+    }
     # Create graphs
     graphDF <- data.frame(x = df[[var1]], y = df[[var2]], diff = df$diff, avg = df$avg)
     plot1 <- ggplot(graphDF, aes(x = x, y = y)) +
         theme_mladen() +
         geom_point(alpha = 0.3) +  
-        geom_smooth(method = "lm", se = FALSE) +
-        geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "red") +
+        geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey") +
+        geom_smooth(method = "lm", se = FALSE, color = "black", size = 0.5) +
         xlab(xlabel) + 
         ylab(ylabel) + 
         theme(legend.position="none")
     
     plot2 <- ggplot(graphDF, aes(x = avg, y = diff)) + 
-        annotate("rect", xmin = -Inf, xmax = Inf, ymin = -SWC, ymax = SWC, fill = "grey", alpha = 0.3) +
+        annotate("rect", xmin = -Inf, xmax = Inf, ymin = -SWC_plot, ymax = SWC_plot, fill = "grey", alpha = 0.3) +
         geom_point(alpha = 0.3) +
-        geom_smooth(method = "lm", se = FALSE) +
         theme_mladen() +
-        geom_hline(yintercept = mean(df$diff, na.rm = na.rm)) +
-        geom_hline(yintercept = mean(df$diff, na.rm = na.rm) + t.conf*sd.diff, color = "grey") +
-        geom_hline(yintercept = mean(df$diff, na.rm = na.rm) - t.conf*sd.diff, color = "grey") +
+        geom_hline(yintercept = mean(df$diff, na.rm = na.rm), color = "grey") +
+        geom_hline(yintercept = mean(df$diff, na.rm = na.rm) + t.conf*sd.diff, color = "grey", linetype = "dashed") +
+        geom_hline(yintercept = mean(df$diff, na.rm = na.rm) - t.conf*sd.diff, color = "grey", linetype = "dashed") +
+        geom_smooth(method = "lm", se = FALSE, color = "black", size = 0.5) +
         ylab(paste(ylabel, " - ", xlabel, sep = "")) + 
         xlab(paste("(", xlabel, " + ", ylabel, ") / 2", sep = "")) +
         theme(legend.position="right")
@@ -95,11 +101,17 @@ bootReliability <- function(df,
         t.conf <- qt(1-((1-confidence)/2), df = length(na.omit(df$diff))-1) 
         
         ## Estimations
-        SWC <- sqrt(((var(df[[var1]], na.rm = na.rm)*(N-1)) + (var(df[[var2]], na.rm = na.rm)*(N-1))) /(2*(N-1))) * SWCcoef
+        
+        if(is.na(SWC)) { # If SWC not provided estimate it
+            SWC <- sqrt(((var(df[[var1]], na.rm = na.rm)*(N-1)) + (var(df[[var2]], na.rm = na.rm)*(N-1))) /(2*(N-1))) * SWCcoef
+        } else { # If provided add some random noise so boot works
+            SWC <- SWC + rnorm(n = 1, mean = 0, sd = errorNoise)     
+        }
+        
         sd.diff <- sd(df$diff, na.rm = na.rm)
         meanDiff <- mean(df$diff, na.rm = na.rm)
-        medianDiff <- median(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-7) # Small 'noise' for boot
-        MADdiff <- mad(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-7) # Small 'noise' for boot
+        medianDiff <- median(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise) # Small 'noise' for boot
+        MADdiff <- mad(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise) # Small 'noise' for boot
         TE <- sd.diff / sqrt(2)
         LOA <- t.conf*sd.diff
         CORR <- cor(df[[var1]], df[[var2]], use = "complete.obs") # Correlation
@@ -108,7 +120,7 @@ bootReliability <- function(df,
         # Get the hit rate 
         hit.rate <- ifelse(df$diff <= SWC & df$diff >= -SWC, 1, 0)
         hit.rate <- sum(hit.rate) / length(hit.rate)
-        hit.rate <- hit.rate + rnorm(n = 1, mean = 0, sd = 10^-7)
+        hit.rate <- hit.rate + rnorm(n = 1, mean = 0, sd = errorNoise)
         # Vector for saving results
         results <- numeric(13) 
         
@@ -203,6 +215,7 @@ bootReliability <- function(df,
                 confidence = confidence,
                 SWCcoef = SWCcoef,
                 logTrans = logTrans,
+                errorNoise = errorNoise,
                 estimates = estimates,
                 graphs = list(BAgraph = BAgraph,
                               signalVSnoiseGraph = signalVSnoiseGraph)))
@@ -220,7 +233,8 @@ bootReliabilityMultiple <- function(df,
                                     samples = 2000,
                                     plot = TRUE,
                                     iter = TRUE,
-                                    na.rm = TRUE) {
+                                    na.rm = TRUE,
+                                    errorNoise = 10^-6) {
     
     
     # Define functions
@@ -359,8 +373,8 @@ bootReliabilityMultiple <- function(df,
             group_by(variable) %>%
             summarize(mean = mean(value, na.rm = na.rm),
                       SD = sd(value, na.rm = na.rm),
-                      median = median(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-7),
-                      MAD = mad(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-7),
+                      median = median(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise),
+                      MAD = mad(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise),
                       SWC = sd(value, na.rm = na.rm) * SWCcoef)
         
         # Save SWC for later
@@ -377,8 +391,8 @@ bootReliabilityMultiple <- function(df,
             group_by(variable) %>%
             summarize(meanDiff = mean(value, na.rm = na.rm),
                       SDdiff = sd(value, na.rm = na.rm),
-                      medianDiff = median(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-7),
-                      MADdiff = mad(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-7),
+                      medianDiff = median(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise),
+                      MADdiff = mad(value, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise),
                       LOA = SDdiff * qt(1-((1-confidence)/2), df = sum(!is.na(value))-1), 
                       TE = SDdiff / sqrt(2))
         
@@ -419,7 +433,7 @@ bootReliabilityMultiple <- function(df,
         
         # HitRate
         HitRate <- pairwiseHitRate(differences, pairSWC, na.rm = na.rm)
-        HitRate <- HitRate + rnorm(n = length(HitRate), mean = 0, sd = 10^-7)
+        HitRate <- HitRate + rnorm(n = length(HitRate), mean = 0, sd = errorNoise)
         
         ## Combine everything in summary df
         diffSummary$HitRate <- HitRate
@@ -564,6 +578,7 @@ bootReliabilityMultiple <- function(df,
                 confidence = confidence,
                 SWCcoef = SWCcoef,
                 logTrans = logTrans,
+                errorNoise = errorNoise,
                 overallSummary = overallSummary,
                 variableSummary = variableSummary,
                 pairwiseSummary = pairwiseSummary,
@@ -581,13 +596,15 @@ bootChange <- function(df,
                        ylabel = post,
                        logTrans = FALSE, # Log transformation - next version
                        SWCcoef = 0.2,
+                       SWC = NA, # Use this if you want to use specific SWC (not est)
                        confidence = 0.95,
                        samples = 2000,
                        TE = 0, # Typical Error
                        paired = TRUE, # Will be used in next version (now it is paired)
                        iter = TRUE,
                        na.rm = TRUE,
-                       plot = TRUE) {
+                       plot = TRUE,
+                       errorNoise = 10^-6) {
     
     
     # Bootstrap
@@ -608,15 +625,21 @@ bootChange <- function(df,
         df$diff <- df[[post]] - df[[pre]]
         
         ## Calculate the estimates
-        # Estimate SWC from Pre
-        SWC <- sd(df[[pre]], na.rm = na.rm) * SWCcoef
+        
+        if(is.na(SWC)) { # If SWC not provided estimate it
+            # Estimate SWC from Pre
+            SWC <- sd(df[[pre]], na.rm = na.rm) * SWCcoef
+        } else { # If provided add some random noise so boot works
+            SWC <- SWC + rnorm(n = 1, mean = 0, sd = errorNoise)     
+        }
+        
         N <- nrow(df)
         meanDiff <- mean(df$diff, na.rm = na.rm)
         # Get the MBIs for mean change
         sd.diff <- sd(df$diff, na.rm = na.rm)
         
-        medianDiff <- median(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-6) # Small 'noise' for boot
-        MADdiff <- mad(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = 10^-6) # Small 'noise' for boot
+        medianDiff <- median(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise) # Small 'noise' for boot
+        MADdiff <- mad(df$diff, na.rm = na.rm) + rnorm(n = 1, mean = 0, sd = errorNoise) # Small 'noise' for boot
         
         # Estimate Cohen's D using pooled SD
         pooledSD <- sqrt(((var(df[[pre]], na.rm = na.rm)*(N-1)) + (var(df[[post]], na.rm = na.rm)*(N-1))) /(2*(N-1)))
@@ -626,17 +649,30 @@ bootChange <- function(df,
         robustEffect <- medianDiff / MADdiff 
         
         # Magnitude based predictions
-        MBP.Harmful.Count <- sum(ifelse(df$diff < -SWC, 1, 0)) / N
-        MBP.Beneficial.Count <- sum(ifelse(df$diff > SWC, 1, 0)) / N
-        MBP.Trivial.Count <- sum(ifelse(df$diff >= -SWC & df$diff <= SWC, 1, 0)) / N
+        MBP.Harmful.Count <- sum(ifelse(df$diff < -SWC, 1, 0), na.rm = na.rm) / N
+        MBP.Beneficial.Count <- sum(ifelse(df$diff > SWC, 1, 0), na.rm = na.rm) / N
+        MBP.Trivial.Count <- sum(ifelse(df$diff >= -SWC & df$diff <= SWC, 1, 0), na.rm = na.rm) / N
         
         # Get the mean harmful and beneficial effect
-        MBP.Harmful.Mean <- mean(df$diff[df$diff < -SWC])
-        MBP.Beneficial.Mean <- mean(df$diff[df$diff > SWC])
+        MBP.Harmful.Mean <- mean(df$diff[df$diff < -SWC], na.rm = na.rm)
+        MBP.Beneficial.Mean <- mean(df$diff[df$diff > SWC], na.rm = na.rm)
         
         # Get the median harmful and beneficial effect
-        MBP.Harmful.Median <- median(df$diff[df$diff < -SWC])
-        MBP.Beneficial.Median <- median(df$diff[df$diff > SWC])
+        MBP.Harmful.Median <- median(df$diff[df$diff < -SWC], na.rm = na.rm)
+        MBP.Beneficial.Median <- median(df$diff[df$diff > SWC], na.rm = na.rm)
+        
+        #### The "TRICKY PART" - In the case of no 'data' in harmful/beneficil
+        #### the boot will complain due NAs or NaNs
+        #### The solution would be to either remove NAs from the boot sample
+        #### Or to return threshold value (plus some random noise for boot)
+        if(is.na(MBP.Harmful.Mean)) MBP.Harmful.Mean <- -SWC + rnorm(n = 1, mean = 0, sd = errorNoise)
+        if(is.na(MBP.Harmful.Median)) MBP.Harmful.Median <- -SWC + rnorm(n = 1, mean = 0, sd = errorNoise)
+        if(is.na(MBP.Beneficial.Mean)) MBP.Beneficial.Mean <- SWC + rnorm(n = 1, mean = 0, sd = errorNoise)
+        if(is.na(MBP.Beneficial.Median)) MBP.Beneficial.Median <- SWC + rnorm(n = 1, mean = 0, sd = errorNoise)
+        #####
+        #####
+        #####
+        
         
         # Vector for saving results
         results <- numeric(10)     
@@ -665,7 +701,9 @@ bootChange <- function(df,
     meanDiff <- boot.ci(results, type="perc", index = 1, conf = confidence)
     
     # Get MBI for mean
-    SWCpre <- sd(df[[pre]], na.rm = na.rm) * SWCcoef
+    SWC <- boot.ci(results, type="perc", index = 5, conf = confidence)
+    SWCpre <- SWC$t0
+    
     meanDiff.Harmful <- sum(ifelse(results$t[,1] < -SWCpre, 1, 0)) / samples
     meanDiff.Trivial <- sum(ifelse(results$t[,1] >= -SWCpre & results$t[,1] <= SWCpre, 1, 0)) / samples
     meanDiff.Beneficial <- sum(ifelse(results$t[,1] > SWCpre, 1, 0)) / samples
@@ -679,7 +717,7 @@ bootChange <- function(df,
     medianDiff.Beneficial <- sum(ifelse(results$t[,3] > SWCpre, 1, 0)) / samples
     
     MADdiff <- boot.ci(results, type="perc", index = 4, conf = confidence)
-    SWC <- boot.ci(results, type="perc", index = 5, conf = confidence)
+
     
     # Get MBI for Cohen's D
     CohenD <- boot.ci(results, type="perc", index = 6, conf = confidence)
@@ -751,7 +789,7 @@ bootChange <- function(df,
         ylab("") + 
         xlab("Probability") +
         geom_point(shape=21, size=3, fill="white")+
-        geom_point(aes(x = Effect), color = "red", shape = "|", size = 5)
+        geom_point(aes(x = Effect), color = "grey", shape = "+", size = 7)
     
     effectsGraph <- gg
     if (plot == TRUE) plot(gg)
@@ -799,6 +837,7 @@ bootChange <- function(df,
                 confidence = confidence,
                 SWCcoef = SWCcoef,
                 logTrans = logTrans,
+                errorNoise = errorNoise,
                 changeEstimate = changeEstimate,
                 graphs = list(effectsGraph = effectsGraph,
                               changeGraph = changeGraph)))
