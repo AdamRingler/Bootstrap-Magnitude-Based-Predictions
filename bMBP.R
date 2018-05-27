@@ -215,9 +215,9 @@ bootReliability <- function(df,
     }
     
     return(list(dfRows = nrow(df),
-                Var1N = sum(is.na(df[[var1]])),
-                Var2N = sum(is.na(df[[var2]])),
-                DiffN = sum(is.na(df$diff)),
+                Var1N = sum(!is.na(df[[var1]])),
+                Var2N = sum(!is.na(df[[var2]])),
+                DiffN = sum(!is.na(df$diff)),
                 
                 bootSamples = samples,
                 measurementError = measurementError,
@@ -840,7 +840,12 @@ bootChange <- function(df,
     changeGraph <- gg
     if (plot == TRUE) plot(gg)
     
-    return(list(N = nrow(df),
+    df$diff <- df[[post]] - df[[pre]]
+    
+    return(list(dfRows = nrow(df),
+                PreN = sum(!is.na(df[[pre]])),
+                Post2N = sum(!is.na(df[[post]])),
+                DiffN = sum(!is.na(df$diff)),
                 bootSamples = samples,
                 TE = TE,
                 paired = paired,
