@@ -38,13 +38,22 @@ bootReliability <- function(df,
                             confidence = 0.95,
                             samples = 2000,
                             plot = TRUE,
+                            BAplotShow = "both", # What variable to show 
                             iter = TRUE,
                             na.rm = TRUE,
                             errorNoise = 10^-6) { # The random noise for boot not to complain
     # Plot    
     df$diff <- df[[var2]] - df[[var1]]
-    df$avg <- (df[[var1]] + df[[var2]]) / 2
     sd.diff <- sd(df$diff, na.rm = na.rm)
+    
+    # What is on x axis of BA plot?
+    if(BAplotShow == "both") {
+        df$avg <- (df[[var1]] + df[[var2]]) / 2
+        BAxlabel <- paste("(", xlabel, " + ", ylabel, ") / 2", sep = "")
+    } else {
+        df$avg <- df[[var1]]
+        BAxlabel <- xlabel
+    }
     
     t.conf <- qt(1-((1-confidence)/2), df = length(na.omit(df$diff))-1) 
     
@@ -56,6 +65,7 @@ bootReliability <- function(df,
     } else {
         SWC_plot <- SWC
     }
+
     # Create graphs
     graphDF <- data.frame(x = df[[var1]], y = df[[var2]], diff = df$diff, avg = df$avg)
     plot1 <- ggplot(graphDF, aes(x = x, y = y)) +
@@ -66,7 +76,7 @@ bootReliability <- function(df,
         xlab(xlabel) + 
         ylab(ylabel) + 
         theme(legend.position="none")
-    
+
     plot2 <- ggplot(graphDF, aes(x = avg, y = diff)) + 
         annotate("rect", xmin = -Inf, xmax = Inf, ymin = -SWC_plot, ymax = SWC_plot, fill = "grey", alpha = 0.3) +
         geom_point(alpha = 0.3) +
@@ -76,7 +86,7 @@ bootReliability <- function(df,
         geom_hline(yintercept = mean(df$diff, na.rm = na.rm) - t.conf*sd.diff, color = "grey", linetype = "dashed") +
         geom_smooth(method = "lm", se = FALSE, color = "black", size = 0.5) +
         ylab(paste(ylabel, " - ", xlabel, sep = "")) + 
-        xlab(paste("(", xlabel, " + ", ylabel, ") / 2", sep = "")) +
+        xlab(BAxlabel) +
         theme(legend.position="right")
     
     BAgraph <- arrangeGrob(plot1, plot2, ncol=2)

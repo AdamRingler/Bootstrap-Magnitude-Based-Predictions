@@ -29,7 +29,7 @@ df <- data.frame(Athlete = athletes,
                  Pre1 = verticalJumpTestPre1,
                  Pre2 = verticalJumpTestPre2)
 
-vjRel.two <- bootReliability(df, "Pre1", "Pre2", samples = 200, plot = TRUE)
+vjRel.two <- bootReliability(df, "Pre1", "Pre2", samples = 200, plot = TRUE, BAplotShow = "both")
 
 # Supply apriori SWC (if you don't want the function to estimate it)
 vjRel.two <- bootReliability(df, "Pre1", "Pre2", samples = 200, plot = TRUE, SWC = 1)
