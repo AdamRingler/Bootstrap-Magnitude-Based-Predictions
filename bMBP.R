@@ -67,12 +67,18 @@ bootReliability <- function(df,
     }
 
     # Create graphs
-    graphDF <- data.frame(x = df[[var1]], y = df[[var2]], diff = df$diff, avg = df$avg)
+    graphDF <- data.frame(x = df[[var1]],
+                          y = df[[var2]],
+                          diff = df$diff,
+                          avg = df$avg)
+    # Add SWC ribbon
+    graphDF <- graphDF %>%
+               mutate(SWCmin = x - SWC_plot,
+                      SWCmax = x + SWC_plot)
     plot1 <- ggplot(graphDF, aes(x = x, y = y)) +
         theme_mladen() +
-        geom_abline(slope = 1, intercept = SWC_plot, colour = "grey", linetype = "dashed") +
-        geom_abline(slope = 1, intercept = -SWC_plot, colour = "grey", linetype = "dashed") +
-        geom_abline(slope = 1, intercept = 0, colour = "grey") +
+        geom_ribbon(aes(ymin = SWCmin, ymax = SWCmax), fill = "grey", alpha = 0.3 ) +
+        geom_abline(slope = 1, intercept = 0, colour = "white") +
         geom_point(alpha = 0.3) +  
         geom_smooth(method = "lm", se = FALSE, color = "black", size = 0.5) +
         xlab(xlabel) + 
@@ -81,6 +87,7 @@ bootReliability <- function(df,
 
     plot2 <- ggplot(graphDF, aes(x = avg, y = diff)) + 
         annotate("rect", xmin = -Inf, xmax = Inf, ymin = -SWC_plot, ymax = SWC_plot, fill = "grey", alpha = 0.3) +
+        geom_abline(slope = 0, intercept = 0, colour = "white") +
         geom_point(alpha = 0.3) +
         theme_mladen() +
         geom_hline(yintercept = mean(df$diff, na.rm = na.rm), color = "grey") +
