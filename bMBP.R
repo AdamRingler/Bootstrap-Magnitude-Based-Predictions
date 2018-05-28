@@ -70,8 +70,10 @@ bootReliability <- function(df,
     graphDF <- data.frame(x = df[[var1]], y = df[[var2]], diff = df$diff, avg = df$avg)
     plot1 <- ggplot(graphDF, aes(x = x, y = y)) +
         theme_mladen() +
+        geom_abline(slope = 1, intercept = SWC_plot, colour = "grey", linetype = "dashed") +
+        geom_abline(slope = 1, intercept = -SWC_plot, colour = "grey", linetype = "dashed") +
+        geom_abline(slope = 1, intercept = 0, colour = "grey") +
         geom_point(alpha = 0.3) +  
-        geom_abline(slope = 1, intercept = 0, linetype = "dashed", colour = "grey") +
         geom_smooth(method = "lm", se = FALSE, color = "black", size = 0.5) +
         xlab(xlabel) + 
         ylab(ylabel) + 
