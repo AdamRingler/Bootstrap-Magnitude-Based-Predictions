@@ -15,7 +15,11 @@ If you plan using these techniques or referencing this article, please use the f
 
 **Jovanovic, M.**(2018). Bootstrap Magnitude Based Predictions. _Complementary Training_. Retrieved from http://www.complementarytraining.com/bmbp
 
+Also make sure to check:
+1.	**Swinton, P. A.**, Hemingway, B. S., Saunders, B., Gualano, B. & Dolan, E. A. (2018). Statistical Framework to Interpret Individual Response to Intervention: Paving the Way for Personalized Nutrition and Exercise Prescription. _Front. Nutr._ 5, 1113–14. [Free Access][5]
+
 [1]:	http://sportsci.org/jour/05/ambwgh.htm
 [2]:	https://twitter.com/kristinsainani
 [3]:	https://twitter.com/WillTheKiwi
 [4]:	https://twitter.com/Alan_Batterham
+[5]:	https://www.frontiersin.org/articles/10.3389/fnut.2018.00041/full
